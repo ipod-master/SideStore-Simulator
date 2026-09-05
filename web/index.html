@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SideStore Simulator - Web Console</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .status {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e74c3c;
+        }
+        .status-indicator.connected {
+            background: #27ae60;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .simulator-list, .app-list {
+            list-style: none;
+        }
+        .simulator-item, .app-item {
+            padding: 12px;
+            border-bottom: 1px solid #ecf0f1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .simulator-item:last-child, .app-item:last-child {
+            border-bottom: none;
+        }
+        .simulator-info, .app-info {
+            flex: 1;
+        }
+        .simulator-name, .app-name {
+            font-weight: 500;
+            color: #333;
+        }
+        .simulator-id, .app-bundle {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }
+        .booted-badge {
+            background: #27ae60;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #5568d3;
+        }
+        .button.danger {
+            background: #e74c3c;
+        }
+        .button.danger:hover {
+            background: #c0392b;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📱 SideStore Simulator</h1>
+            <p>Manage iOS Simulator Apps</p>
+            <div class="status">
+                <div class="status-item">
+                    <div class="status-indicator connected" id="status-indicator"></div>
+                    <span id="connection-status">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="card">
+                <h2>📱 Simulators</h2>
+                <ul class="simulator-list" id="simulator-list">
+                    <li class="simulator-item">
+                        <div class="simulator-info">
+                            <div class="simulator-name">Loading...</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>📦 Apps Catalog</h2>
+                <ul class="app-list" id="app-list">
+                    <li class="app-item">
+                        <div class="app-info">
+                            <div class="app-name">Loading...</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080';
+
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    document.getElementById('status-indicator').classList.add('connected');
+                    document.getElementById('connection-status').textContent = '✅ Connected';
+                    loadSimulators();
+                    loadApps();
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (error) {
+                document.getElementById('status-indicator').classList.remove('connected');
+                document.getElementById('connection-status').textContent = '❌ Disconnected';
+                console.error('Connection error:', error);
+            }
+        }
+
+        async function loadSimulators() {
+            try {
+                const response = await fetch(`${API_URL}/api/simulators`);
+                const data = await response.json();
+                const list = document.getElementById('simulator-list');
+                list.innerHTML = '';
+
+                if (data.simulators.length === 0) {
+                    list.innerHTML = '<li class="simulator-item"><div class="simulator-info"><div class="simulator-name">No simulators found</div></div></li>';
+                    return;
+                }
+
+                data.simulators.forEach(sim => {
+                    const item = document.createElement('li');
+                    item.className = 'simulator-item';
+                    item.innerHTML = `
+                        <div class="simulator-info">
+                            <div class="simulator-name">${sim.name}</div>
+                            <div class="simulator-id">${sim.id}</div>
+                        </div>
+                        ${sim.booted ? '<span class="booted-badge">Booted</span>' : ''}
+                    `;
+                    list.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading simulators:', error);
+            }
+        }
+
+        async function loadApps() {
+            try {
+                const response = await fetch(`${API_URL}/app/catalog`);
+                const data = await response.json();
+                const list = document.getElementById('app-list');
+                list.innerHTML = '';
+
+                if (data.apps.length === 0) {
+                    list.innerHTML = '<li class="app-item"><div class="app-info"><div class="app-name">No apps in catalog</div></div></li>';
+                    return;
+                }
+
+                data.apps.forEach(app => {
+                    const item = document.createElement('li');
+                    item.className = 'app-item';
+                    item.innerHTML = `
+                        <div class="app-info">
+                            <div class="app-name">${app.name}</div>
+                            <div class="app-bundle">${app.bundleId}</div>
+                        </div>
+                        <button class="button" onclick="viewApp('${app.id}')">Details</button>
+                    `;
+                    list.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading apps:', error);
+            }
+        }
+
+        function viewApp(appId) {
+            alert(`View details for app: ${appId}`);
+        }
+
+        // Initial load
+        checkConnection();
+        setInterval(checkConnection, 5000);
+    </script>
+</body>
+</html>
