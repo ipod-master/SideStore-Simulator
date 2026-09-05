@@ -1,0 +1,27 @@
+{
+  "simulatorConfig": {
+    "autoBootSimulator": true,
+    "bootTimeout": 30000,
+    "appInstallTimeout": 60000,
+    "networkCheck": true,
+    "vpnIntegration": {
+      "enabled": false,
+      "type": "openvpn",
+      "autoConnect": false,
+      "configPath": "./config/vpn.conf"
+    },
+    "routes": [
+      {
+        "source": "simulator",
+        "destination": "localhost",
+        "port": 8080
+      }
+    ],
+    "networkRouting": {
+      "enabled": true,
+      "protocol": "http",
+      "localPort": 8080,
+      "simulatorPort": 8080
+    }
+  }
+}
